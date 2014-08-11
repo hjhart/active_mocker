@@ -152,6 +152,10 @@ class MicropostMock < ActiveMocker::Mock::Base
     call_mock_method :post_id
   end
 
+  def self.default_scopes
+    call_mock_method :default_scopes
+  end
+
   def self.from_users_followed_by(user=nil)
     call_mock_method :from_users_followed_by, user
   end

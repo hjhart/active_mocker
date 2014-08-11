@@ -27,7 +27,7 @@ module ActiveMocker
         if selected_table.nil?
           Logger.error "The Implicit or defined table, `#{table_name}`, can not be found for model #{model_name.camelize}."
         end
-        tables.delete(selected_table)
+        # tables.delete(selected_table)
         selected_table
       end
 
@@ -95,14 +95,14 @@ module ActiveMocker
       def build_relationships(model)
         relations_by_type(model).map do |type, relations|
           relations.map do |relation|
-            join_table = nil
-            join_table = find_join_table(relation, model) if type == :has_and_belongs_to_many
+            # join_table = nil
+            # join_table = find_join_table(relation, model) if type == :has_and_belongs_to_many
             Relationships.new(name:        relation.name,
                               class_name:  relation.class_name,
-                              type:        type,
-                              through:     relation.through,
+                              type:        relation.macro,
+                              through:     nil,
                               foreign_key: relation.foreign_key,
-                              join_table:  join_table)
+                              join_table: nil)
           end
         end.flatten
       end

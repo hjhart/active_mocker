@@ -21,23 +21,7 @@ module ActiveMocker
     end
 
     def eval_file
-      failure = false
-        begin
-          m = Module.new
-          m.module_eval(read_file, file_path)
-        rescue SyntaxError => e
-          Logger.error "ActiveMocker :: Error loading Model: #{model_name} \n \t\t\t\t\t\t\t\t`#{e}` \n"
-          puts "ActiveMocker :: Error loading Model: #{model_name} \n \t\t\t\t\t\t\t\t`#{e}` \n"
-          Logger.error "\t\t\t\t\t\t\t\t #{file_path}\n"
-          puts "\t\t\t\t\t\t\t\t #{file_path}\n"
-          failure = true
-        rescue Exception => e
-          Logger.error "ActiveMocker :: Error loading Model: #{model_name} \n \t\t\t\t\t\t\t\t`#{e}` \n"
-          Logger.error "\t\t\t\t\t\t\t\t #{file_path}\n"
-          failure = true
-        end
-      return m.const_get m.constants.first unless failure
-      return false
+      model_name.classify.constantize
     end
 
     def real
@@ -52,17 +36,55 @@ module ActiveMocker
       "#{model_dir}/#{model_name}.rb"
     end
 
+    def instance_methods
+      klass.public_instance_methods(false).reject do |meth|
+        is_active_record_method(meth)
+      end
+    end
+
     def class_methods
-      klass.methods(false)
+      [[*klass.methods(false)] - [*scopes.keys]].flatten.reject do |meth|
+        is_active_record_method(meth)
+      end
+    end
+
+    def is_active_record_method(meth)
+      starts_with = %w[
+          autosave_associated_records_for_
+          validate_associated_
+          before_add_for_
+          after_add_for_
+          after_remove_for_
+          before_remove_for_
+          autosave_associated_records_for_
+          validate_associated_records_for_
+        ]
+      is = %w[
+          _validators
+          defined_enums
+          _destroy_callbacks
+          _save_callbacks
+          _create_callbacks
+          _update_callbacks
+          _validate_callbacks
+          _reflections
+          belongs_to_counter_cache_after_create
+          belongs_to_counter_cache_before_destroy
+          belongs_to_counter_cache_after_update
+        ]
+      return true if starts_with.any? { |name| /^#{name}/ =~ meth.to_s }
+      return true if is.any? { |name| name.to_s == meth.to_s }
     end
 
     def scopes
-      klass.get_named_scopes
+      values = klass.instance_variable_get(:@scope_method_names)
+      values =  values.nil? ? {} : values
+      values
     end
 
     def scopes_with_arguments
-      scopes.map do |name, proc|
-        {name => proc.parameters, :proc => proc}
+      scopes.map do |name, parameters|
+        {name => parameters}
       end
     end
 
@@ -76,10 +98,6 @@ module ActiveMocker
       instance_methods.map do |m|
         {m => klass.new.method(m).parameters }
       end
-    end
-
-    def instance_methods
-      klass.public_instance_methods(false)
     end
 
     def relationships_types
@@ -99,19 +117,19 @@ module ActiveMocker
     end
 
     def belongs_to
-      klass.relationships.belongs_to
+      klass.reflect_on_all_associations(:belongs_to)
     end
 
     def has_one
-      klass.relationships.has_one
+      klass.reflect_on_all_associations(:has_one)
     end
 
     def has_and_belongs_to_many
-      klass.relationships.has_and_belongs_to_many
+      klass.reflect_on_all_associations(:has_and_belongs_to_many)
     end
 
     def has_many
-      klass.relationships.has_many
+      klass.reflect_on_all_associations(:has_many)
     end
 
     def table_name
@@ -124,7 +142,7 @@ module ActiveMocker
 
     def constants
       const = {}
-      klass.constants.each {|c| const[c] = klass.const_get(c)}
+      [klass.constants - klass.superclass.constants].flatten.each {|c| const[c] = klass.const_get(c)}
       const = const.reject do |c, v|
         v.class == Module || v.class == Class
       end
@@ -132,12 +150,12 @@ module ActiveMocker
     end
 
     def modules
-      {included:  process_module_names(klass._included),
-       extended: process_module_names(klass._extended)}
+      {included: process_module_names(klass.included_modules - klass.superclass.included_modules),
+       extended: process_module_names(klass.singleton_class.included_modules - klass.superclass.singleton_class.included_modules)}
     end
 
     def process_module_names(names)
-      names.reject { |m| /#{klass.inspect}/ =~ m.name }.map(&:inspect)
+      names.reject { |m| /GeneratedAssociationMethods/ =~  m.name || m.name.nil? || /#{klass.name}/ =~ m.name }.map(&:inspect)
     end
 
   end

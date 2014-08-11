@@ -15,3 +15,25 @@ module ActiveMocker
     end
   end
 end
+
+module ActiveMocker
+  module ActiveRecord
+    module Scopes
+      def scope(name, body, &block)
+        @scope_method_names ||= {}
+        @scope_method_names[name] = body.parameters
+        super
+      end
+    end
+  end
+end
+
+module ActiveRecord
+  module Scoping
+    module Named
+      module ClassMethods
+        prepend ActiveMocker::ActiveRecord::Scopes
+      end
+    end
+  end
+end

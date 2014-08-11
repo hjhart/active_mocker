@@ -1,6 +1,6 @@
 require 'active_mocker/mock'
 
-class UserMock < ActiveMocker::Mock::Base
+class ChildMock < ActiveMocker::Mock::Base
 
   class << self
 
@@ -17,7 +17,7 @@ class UserMock < ActiveMocker::Mock::Base
     end
 
     def mocked_class
-      'User'
+      'Child'
     end
 
     private :mocked_class
@@ -120,8 +120,8 @@ class UserMock < ActiveMocker::Mock::Base
   def account=(val)
     @associations['account'] = val
     if ActiveMocker::Mock.config.experimental
-      account.users <<  self if val.respond_to?(:users=)
-      account.send(:write_association, :user,  self) if val.respond_to?(:user=)
+      account.children <<  self if val.respond_to?(:children=)
+      account.send(:write_association, :child,  self) if val.respond_to?(:child=)
     end
     val
   end
@@ -178,26 +178,18 @@ class UserMock < ActiveMocker::Mock::Base
 
   module Scopes
 
-    def find_by_name(name)
-      ActiveMocker::LoadedMocks.find('User').send(:call_mock_method, 'find_by_name', name)
-    end
-
-    def by_name(name)
-      ActiveMocker::LoadedMocks.find('User').send(:call_mock_method, 'by_name', name)
-    end
-
   end
 
   extend Scopes
 
   class ScopeRelation < ActiveMocker::Mock::Association
-    include UserMock::Scopes
+    include ChildMock::Scopes
   end
 
   private
 
   def self.new_relation(collection)
-    UserMock::ScopeRelation.new(collection)
+    ChildMock::ScopeRelation.new(collection)
   end
 
   public
@@ -206,30 +198,6 @@ class UserMock < ActiveMocker::Mock::Base
   #        Model Methods           #
   ##################################
 
-
-  def feed
-    call_mock_method :feed
-  end
-
-  def following?(other_user)
-    call_mock_method :following?, other_user
-  end
-
-  def follow!(other_user)
-    call_mock_method :follow!, other_user
-  end
-
-  def unfollow!(other_user)
-    call_mock_method :unfollow!, other_user
-  end
-
-  def self.new_remember_token
-    call_mock_method :new_remember_token
-  end
-
-  def self.digest(token)
-    call_mock_method :digest, token
-  end
 
   private
 
