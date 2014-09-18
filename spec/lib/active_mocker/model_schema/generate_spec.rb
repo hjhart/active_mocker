@@ -46,11 +46,11 @@ describe ActiveMocker::ModelSchema::Generate do
   end
 
   it 'constants' do
-    expect(run[1].constants).to eq({:MAGIC_ID_NUMBER => 90, :MAGIC_ID_STRING => "F-1"})
+    expect(run[3].constants).to eq({:MAGIC_ID_NUMBER => 90, :MAGIC_ID_STRING => "F-1"})
   end
 
   it 'modules' do
-    expect(run[1].modules).to eq({:included => ['PostMethods'], :extended => ['PostMethods']})
+    expect(run[3].modules).to eq({:included => ['PostMethods'], :extended => ['PostMethods']})
   end
 
   it 'attributes' do
