@@ -7,8 +7,8 @@ RSpec.configure do |config|
     ActiveMocker::LoadedMocks.class_name_to_mock.select { |name, mock| name == class_name }.values.first
   end
 
-  config.before(:each) do
-    if self.class.metadata[:active_mocker]
+  config.before(:each, active_mocker: true) do
+    unless  ENV['RUN_WITH_RAILS'] && self.class.metadata[:rails_compatible]
       ActiveMocker::LoadedMocks.class_name_to_mock.each { |class_name, mock| stub_const(class_name, mock) }
     end
   end

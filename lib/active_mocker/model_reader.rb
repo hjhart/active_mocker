@@ -1,5 +1,7 @@
+
 module ActiveMocker
   # @api private
+
   class ModelReader
 
     attr_reader :model_name, :model_dir, :file_reader
@@ -12,44 +14,68 @@ module ActiveMocker
     def parse(model_name)
       @model_name = model_name
       klass
-      return self unless @klass == false
+      return self if @klass
       return false
     end
 
     def klass
-      @klass ||= eval_file
+      @klass ||= eval_file(sandbox_model, file_path)
     end
 
-    def eval_file
+    def sandbox_model
+      source = ActiveMocker::RubyParse.new(read_file)
+      if source.has_parent_class? && source.parent_class_name == 'ActiveRecord::Base'
+        source.modify_parent_class('ActiveMocker::ActiveRecord::Base')
+      else
+        load_parent_class(source.parent_class_name)
+        read_file
+      end
+    end
+
+    def load_parent_class(class_name)
+      file_name = class_name.tableize.singularize
+      source = ActiveMocker::RubyParse.new(read_file(file_name)).modify_parent_class('ActiveMocker::ActiveRecord::Base')
+      eval_file(source, file_path(file_name))
+    end
+
+    def module_namespace
+      @module ||= Module.new
+    end
+
+    def eval_file(string, file_path)
       failure = false
-        begin
-          m = Module.new
-          m.module_eval(read_file, file_path)
-        rescue SyntaxError => e
-          Logger.error "ActiveMocker :: Error loading Model: #{model_name} \n \t\t\t\t\t\t\t\t`#{e}` \n"
-          puts "ActiveMocker :: Error loading Model: #{model_name} \n \t\t\t\t\t\t\t\t`#{e}` \n"
-          Logger.error "\t\t\t\t\t\t\t\t #{file_path}\n"
-          puts "\t\t\t\t\t\t\t\t #{file_path}\n"
-          failure = true
-        rescue Exception => e
-          Logger.error "ActiveMocker :: Error loading Model: #{model_name} \n \t\t\t\t\t\t\t\t`#{e}` \n"
-          Logger.error "\t\t\t\t\t\t\t\t #{file_path}\n"
-          failure = true
-        end
-      return m.const_get m.constants.first unless failure
-      return false
+      begin
+
+        module_namespace.module_eval(string, file_path)
+        _klass = module_namespace.const_get(module_namespace.constants.last)
+      rescue SyntaxError => e
+        log_loading_error(e, true)
+        failure = true
+      rescue Exception => e
+        log_loading_error(e, false)
+        failure = true
+      end
+      return false if failure
+      _klass
+    end
+
+    def log_loading_error(msg, print_to_stdout=false)
+      main = "ActiveMocker :: Error loading Model: #{model_name} \n\t#{msg}\n"
+      file = "\t#{file_path}\n"
+      Logger.error main + file
+      print main + file if print_to_stdout
     end
 
     def real
       model_name.classify.constantize
     end
 
-    def read_file
-      file_reader.read(file_path)
+    def read_file(m_name=model_name)
+      file_reader.read(file_path(m_name))
     end
 
-    def file_path
-      "#{model_dir}/#{model_name}.rb"
+    def file_path(m_name=model_name)
+      "#{model_dir}/#{m_name}.rb"
     end
 
     def class_methods
@@ -74,12 +100,14 @@ module ActiveMocker
 
     def instance_methods_with_arguments
       instance_methods.map do |m|
-        {m => klass.new.method(m).parameters }
+        {m => klass.instance_method(m).parameters }
       end
     end
 
     def instance_methods
-      klass.public_instance_methods(false)
+      methods = klass.public_instance_methods(false)
+      methods << klass.superclass.public_instance_methods(false) if klass.superclass != ActiveRecord::Base
+      methods.flatten
     end
 
     def relationships_types

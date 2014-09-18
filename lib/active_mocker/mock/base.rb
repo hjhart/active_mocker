@@ -99,7 +99,8 @@ class Base
     end
 
     def build_type(type)
-      Virtus::Attribute.build(type)
+      @@built_types ||= {}
+      @@built_types[type] ||= Virtus::Attribute.build(type)
     end
 
     def classes(klass)
@@ -254,16 +255,6 @@ class Base
 
   def inspect
     ObjectInspect.new(self.class.name, attributes).to_s
-  end
-
-  def hash
-    attributes.hash
-  end
-
-  def ==(obj)
-    return false if obj.nil?
-    return hash == obj.attributes.hash if obj.respond_to?(:attributes)
-    hash == obj.hash if obj.respond_to?(:hash)
   end
 
   module PropertiesGetterAndSetter
