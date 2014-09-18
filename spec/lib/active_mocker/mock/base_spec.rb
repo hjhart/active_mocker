@@ -38,6 +38,10 @@ describe ActiveMocker::Mock::Base do
       self.class.attributes[:id]
     end
 
+    def id=(val)
+      self.class.attributes[:id] = val
+    end
+
   end
 
   it_behaves_like 'Queriable', -> (*args) {
