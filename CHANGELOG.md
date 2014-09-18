@@ -1,5 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
+## 1.6.3 - 2014-09-18
+
+### Fix
+- Bug where creating record with an id could cause a duplicate id error.
+
 ## 1.6.3 - 2014-08-14
 
 ### Fix
