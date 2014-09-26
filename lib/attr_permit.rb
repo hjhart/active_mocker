@@ -1,4 +1,3 @@
-require 'attr_permit/version'
 require 'active_support/core_ext/big_decimal'
 
 class AttrPermit
